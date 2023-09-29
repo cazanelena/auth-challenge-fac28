@@ -17,8 +17,8 @@ function get(req, res) {
   const pageOwner = Number(req.params.user_id);
 
   // If the logged in user is not the page owner send a 401 response
-  if(currentUser !== pageOwner) {
-    return res.status(401).send("<h1>You aren't allowed to see that</h1>")
+  if (currentUser !== pageOwner) {
+    return res.status(401).send("<h1>You aren't allowed to see that</h1>");
   }
   const confessions = listConfessions(req.params.user_id);
   const title = "Your secrets";
@@ -48,18 +48,21 @@ function get(req, res) {
 }
 
 function post(req, res) {
-  /**
-   * Currently any user can POST to any other user's confessions (this is bad!)
-   * We can't rely on the URL params. We can only trust the cookie.
-   * [1] Get the session ID from the cookie
-   * [2] Get the session from the DB
-   * [3] Get the logged in user's ID from the session
-   * [4] Use the user ID to create the confession in the DB
-   * [5] Redirect back to the logged in user's confession page
-   */
-  const current_user = Number(req.params.user_id);
-  createConfession(req.body.content, current_user);
-  res.redirect(`/confessions/${current_user}`);
+  // Get the session ID from the cookie
+  const sid = req.signedCookies.sid;
+  // Get the session from the DB
+  const session = getSession(sid);
+
+  // Get the logged in user's ID from the session
+  const currentUser = session && session.user_id;
+
+  if (!req.body.content || !currentUser) {
+    return res.status(401).send("<h1>Confession failed</h1>");
+  }
+  // Use the user ID to create the confession in the DB
+  createConfession(req.body.content, currentUser);
+  // Redirect back to the logged in user's confession page
+  res.redirect(`/confessions/${currentUser}`);
 }
 
 module.exports = { get, post };
